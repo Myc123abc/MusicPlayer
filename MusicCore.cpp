@@ -44,7 +44,7 @@ void MusicCore::pause() {
     BASS_ChannelPause(_music);
     _pause = true;
   } else {
-    BASS_ChannelPlay(_music, FALSE);
+    BASS_ChannelStart(_music);
     _pause = false;
   }
 }

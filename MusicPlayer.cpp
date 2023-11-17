@@ -8,7 +8,7 @@
 #include <string.h>
 #include <thread>
 
-// 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
+// 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
 
 /*
  *  MusicPlayer
@@ -25,6 +25,7 @@ MusicPlayer::~MusicPlayer() {}
 
 void MusicPlayer::load(const char *name) {
   _music.load(name);
+  _music.play();
   _music.pause();
   _musicInfo.load(this);
 }
