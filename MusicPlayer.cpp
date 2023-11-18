@@ -87,6 +87,8 @@ void MusicPlayer::next() {
   load((std::string(_path) + _musiclist[++_index]).c_str());
   _music.pause();
   _musicInfo._pause = false;
+  if (_musicInfo._cycle)
+    _music.loop();
 }
 
 void MusicPlayer::prev() {
@@ -166,10 +168,12 @@ void MusicPlayer::MusicInfo::runUI() {
         if (!_pause && !_cycle) {
           if (!_end) {
             _p->next();
+            continue;
           } else {
             _p->_music.end();
             _p->load(_p->_music.getName());
             _pause = true;
+            continue;
           }
         }
       }
