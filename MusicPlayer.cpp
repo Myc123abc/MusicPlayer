@@ -89,6 +89,8 @@ void MusicPlayer::next() {
   _musicInfo._pause = false;
   if (_musicInfo._cycle)
     _music.loop();
+  if (_musicInfo._mute)
+    _music.muteVolume();
 }
 
 void MusicPlayer::prev() {
@@ -107,6 +109,10 @@ void MusicPlayer::prev() {
   load((std::string(_path) + _musiclist[--_index]).c_str());
   _music.pause();
   _musicInfo._pause = false;
+  if (_musicInfo._cycle)
+    _music.loop();
+  if (_musicInfo._mute)
+    _music.muteVolume();
 }
 
 void MusicPlayer::readMusicDirectory(const char *dirname) {
