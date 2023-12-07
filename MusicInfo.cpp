@@ -118,12 +118,23 @@ void MusicPlayer::MusicInfo::directory() {
     refresh();
   };
 
+  static int *p1, *p2, *p3;
+  static bool first2 = true;
+  if (!first2)
+    checkout(p1, p2, p3, highth);
+
   static int cursorStation = 0;
   static int oldcursor = _cursor;
   static int oldStation = _cursor;
-  if (size - _cursor < highth) {
-    cursorStation = highth - size + _cursor;
-    oldStation = size - highth;
+  if (first2) {
+    p1 = &cursorStation;
+    p2 = &oldcursor;
+    p3 = &oldStation;
+    first2 = false;
+    if (size - _cursor < highth) {
+      cursorStation = highth - 1; 
+      oldStation -= cursorStation;
+    }
   }
 
   bool first = true;
@@ -171,4 +182,42 @@ void MusicPlayer::MusicInfo::directory() {
   wborder(_dirwin, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
   wrefresh(_dirwin);
   delwin(_dirwin);
+}
+
+void MusicPlayer::MusicInfo::checkout(int *p1, int *p2, int *p3, int highth) {
+  int &cursorStation = *p1, &oldcursor = *p2, &oldStation = *p3;
+  const int &index = _p->_index;
+
+  int tmp = index - oldcursor;
+  if (tmp < 0) {
+    tmp *= -1;
+    if (tmp > cursorStation) {
+      cursorStation = 0;
+      oldcursor = index;
+      oldStation = index;
+      return;
+    }
+  } else {
+    if (tmp > highth - 1 - cursorStation) {
+      oldStation += tmp - highth + 1 + cursorStation;
+      cursorStation = highth - 1;
+      oldcursor = index;
+      return;
+    }
+  }
+
+  if (cursorStation == 0) {
+    if (index < oldcursor)
+      oldStation = index;
+    else
+      cursorStation += index - oldcursor;
+  } else if (cursorStation < highth - 1) {
+    cursorStation += index - oldcursor;
+  } else {
+    if (index < oldcursor)
+      cursorStation += index - oldcursor;
+    else
+      oldStation += index - oldcursor;
+  }
+  oldcursor = _p->_index;
 }

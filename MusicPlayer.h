@@ -60,6 +60,7 @@ private:
     bool _dir;
     WINDOW *_dirwin;
     int _cursor;
+    void checkout(int *p1, int *p2, int *p3, int highth);
   } _musicInfo;
 };
 
