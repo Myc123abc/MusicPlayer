@@ -2,8 +2,10 @@
 #define MUSICPLAYER_H
 
 #include "MusicCore.h"
+#include <ncurses.h>
 #include <string>
 #include <vector>
+#include <semaphore>
 
 class MusicPlayer {
 public:
@@ -17,8 +19,11 @@ private:
 
   void load(const char *name);
 
+  void play(unsigned index);
   void next();
   void prev();
+
+  void runDirectory();
 
 private:
   char _path[256];
@@ -35,8 +40,8 @@ private:
     void load(MusicPlayer *p);
     void update();
     void print();
-    void clear() { printf("\033[H\033[J"); }
     void runUI();
+    void directory();
 
     MusicPlayer *_p;
     char _name[256];
@@ -50,6 +55,11 @@ private:
     bool _end;
     bool _begin;
     bool _reset;
+    int _row, _col;
+
+    bool _dir;
+    WINDOW *_dirwin;
+    int _cursor;
   } _musicInfo;
 };
 

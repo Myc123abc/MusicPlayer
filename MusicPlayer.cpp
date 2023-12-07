@@ -1,18 +1,13 @@
 #include "MusicPlayer.h"
-#include "bass/bass.h"
 #include "error.h"
-#include "other.h"
-#include <chrono>
+#include <cstdlib>
 #include <dirent.h>
-#include <stdlib.h>
+#include <ncurses.h>
 #include <string.h>
-#include <thread>
 
-// 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
-
-/*
- *  MusicPlayer
- */
+// for random
+#include <algorithm>
+#include <random>
 
 MusicPlayer::MusicPlayer(const char *musicDir) {
   strcpy(_path, musicDir);
@@ -32,6 +27,17 @@ void MusicPlayer::load(const char *name) {
 
 void MusicPlayer::run() {
   load((std::string(_path) + _musiclist[_index]).c_str());
+
+  // start ncurses
+  setlocale(LC_ALL, "");
+  initscr();
+  noecho();
+  use_default_colors();
+  start_color();
+  curs_set(0);
+
+  init_pair(1, COLOR_GREEN, -1);
+
   _musicInfo.runUI();
   while (true) {
     switch (getch()) {
@@ -40,6 +46,7 @@ void MusicPlayer::run() {
       _musicInfo._pause = !_musicInfo._pause;
       break;
     case 'q':
+      endwin();
       return;
     case 'k':
       _music.raiseVolume(5);
@@ -67,8 +74,25 @@ void MusicPlayer::run() {
     case 'p':
       prev();
       break;
+    case 'd':
+      runDirectory();
+      break;
     }
   }
+}
+
+void MusicPlayer::play(unsigned index) {
+  _index = index;
+
+  _music.end();
+  load((std::string(_path) + _musiclist[_index]).c_str());
+  _music.pause();
+  _musicInfo._pause = false;
+
+  if (_musicInfo._cycle)
+    _music.loop();
+  if (_musicInfo._mute)
+    _music.muteVolume();
 }
 
 void MusicPlayer::next() {
@@ -81,14 +105,11 @@ void MusicPlayer::next() {
     _musicInfo._reset = true;
     return;
   }
+
   if (_musicInfo._begin)
     _musicInfo._begin = false;
-  _music.end();
-  load((std::string(_path) + _musiclist[++_index]).c_str());
-  _music.pause();
-  _musicInfo._pause = false;
-  if (_musicInfo._cycle)
-    _music.loop();
+
+  play(++_index);
 }
 
 void MusicPlayer::prev() {
@@ -101,12 +122,11 @@ void MusicPlayer::prev() {
     _musicInfo._reset = true;
     return;
   }
+
   if (_musicInfo._end)
     _musicInfo._end = false;
-  _music.end();
-  load((std::string(_path) + _musiclist[--_index]).c_str());
-  _music.pause();
-  _musicInfo._pause = false;
+
+  play(--_index);
 }
 
 void MusicPlayer::readMusicDirectory(const char *dirname) {
@@ -118,80 +138,51 @@ void MusicPlayer::readMusicDirectory(const char *dirname) {
   while ((entry = readdir(dir)) != NULL)
     if (entry->d_type == DT_REG)
       _musiclist.emplace_back(entry->d_name);
+
+  // random
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(_musiclist.begin(), _musiclist.end(), g);
 }
 
-/*
- * MusicInfo
- */
+std::binary_semaphore lock1{0};
+std::binary_semaphore lock2{0};
 
-MusicPlayer::MusicInfo::MusicInfo()
-    : _pause(true), _cycle(false), _mute(false), _begin(true), _end(false),
-      _reset(false) {}
-MusicPlayer::MusicInfo::~MusicInfo() {}
-
-void MusicPlayer::MusicInfo::load(MusicPlayer *p) {
-  _p = p;
-  std::string name(_p->_music.getName());
-  strcpy(_name, name.substr(name.find_last_of('/') + 1).c_str());
-  _minute = _p->_music.getTime() / 60;
-  _second = (unsigned)_p->_music.getTime() % 60;
-  _currminute = 0;
-  _currsecond = 0;
-}
-
-void MusicPlayer::MusicInfo::update() {
-  unsigned time = _p->_music.getCurrentTime();
-  _currminute = time / 60;
-  _currsecond = time % 60;
-}
-
-void MusicPlayer::MusicInfo::runUI() {
-  std::thread([this] {
-    static unsigned cnt = 0;
-    while (true) {
-      print();
-      if (_reset) {
-        if (_begin)
-          printf("This is the first music.\n");
-        if (_end)
-          printf("This is the last music\n");
-        if (++cnt == 10) {
-          cnt = 0;
-          _reset = false;
-        }
-      } else
-        printf("\n");
-      using namespace std::chrono_literals;
-      std::this_thread::sleep_for(100ms);
-
-      if (_currminute == _minute && _currsecond == _second) {
-        if (!_pause && !_cycle) {
-          if (!_end) {
-            _p->next();
-            continue;
-          } else {
-            _p->_music.end();
-            _p->load(_p->_music.getName());
-            _pause = true;
-            continue;
-          }
-        }
+void MusicPlayer::runDirectory() {
+  _musicInfo._cursor = _index;
+  _musicInfo._dir = true;
+  while (_musicInfo._dir) {
+    lock1.acquire();
+  begin:
+    switch (getch()) {
+    case 'd':
+      _musicInfo._dir = false;
+      lock2.release();
+      break;
+    case 'j':
+      if (_musicInfo._cursor == _musiclist.size() - 1) {
+        lock2.release();
+        break;
       }
+      ++_musicInfo._cursor;
+      lock2.release();
+      break;
+    case 'k':
+      if (_musicInfo._cursor == 0) {
+        lock2.release();
+        break;
+      }
+      --_musicInfo._cursor;
+      lock2.release();
+      break;
+    case '\n':
+      play(_musicInfo._cursor);
+      _musicInfo._dir = false;
+      lock2.release();
+      break;
+    default:
+      goto begin;
+      break;
     }
-  }).detach();
-}
-
-void MusicPlayer::MusicInfo::print() {
-  update();
-  clear();
-  printf("%s\n", _name);
-  printf("[ %s ", _pause ? "" : "");
-  printf(" %s  |  ", _cycle ? "" : "");
-  if (_mute)
-    printf("󰝟 ");
-  else
-    printf(" ");
-  printf("%3u%% ] ", _p->_music.getVolume());
-  printf("[%u:%02u/", _currminute, _currsecond);
-  printf("%u:%02u]\n", _minute, _second);
+  }
 }
