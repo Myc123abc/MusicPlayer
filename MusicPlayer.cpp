@@ -35,8 +35,10 @@ void MusicPlayer::run() {
   use_default_colors();
   start_color();
   curs_set(0);
+  keypad(stdscr, TRUE);
 
   init_pair(1, COLOR_GREEN, -1);
+  init_pair(2, COLOR_YELLOW, -1);
 
   _musicInfo.runUI();
   while (true) {
@@ -157,32 +159,98 @@ void MusicPlayer::runDirectory() {
     switch (getch()) {
     case 'd':
       _musicInfo._dir = false;
-      lock2.release();
       break;
     case 'j':
-      if (_musicInfo._cursor == _musiclist.size() - 1) {
-        lock2.release();
+      if (_musicInfo._cursor == _musiclist.size() - 1)
         break;
-      }
       ++_musicInfo._cursor;
-      lock2.release();
       break;
     case 'k':
-      if (_musicInfo._cursor == 0) {
-        lock2.release();
+      if (_musicInfo._cursor == 0)
         break;
-      }
       --_musicInfo._cursor;
-      lock2.release();
       break;
     case '\n':
       play(_musicInfo._cursor);
       _musicInfo._dir = false;
-      lock2.release();
+      break;
+    case '/':
+      _musicInfo._find = true;
+      find();
+      break;
+    case 'n':
+      if (!_musicInfo.find_result.empty()) {
+        bool fin = false;
+        for (const auto &result : _musicInfo.find_result) {
+          if (result.first > _musicInfo._cursor) {
+            _musicInfo._resultpos = result.first;
+            fin = true;
+            break;
+          }
+        }
+        if (!fin)
+          _musicInfo._resultpos = _musicInfo.find_result[0].first;
+        _musicInfo._cursor = _musicInfo._resultpos;
+        _callback(_musicInfo._cursor);
+      }
+      break;
+    case 'p':
+      if (!_musicInfo.find_result.empty()) {
+        bool fin = false;
+        const auto &target = _musicInfo.find_result;
+        for (int i = target.size() - 1; i >= 0; --i) {
+          if (target[i].first < _musicInfo._cursor) {
+            _musicInfo._resultpos = target[i].first;
+            fin = true;
+            break;
+          }
+        }
+        if (!fin)
+          _musicInfo._resultpos = target[target.size() - 1].first;
+        _musicInfo._cursor = _musicInfo._resultpos;
+        _callback(_musicInfo._cursor);
+      }
       break;
     default:
       goto begin;
-      break;
     }
+    lock2.release();
   }
+}
+
+void MusicPlayer::find() {
+  curs_set(1);
+  MusicName &music = _musicInfo._musicname;
+  while (true) {
+    lock2.release();
+    int c = getch();
+    if (c == '\n')
+      break;
+    else if (c == KEY_BACKSPACE)
+      music.pop_back();
+    else
+      music.push_back(c);
+  }
+  if (!_musicInfo.find_result.empty()) {
+    std::vector<int> minusres;
+    for (const auto &result : _musicInfo.find_result) {
+      int i = result.first - _musicInfo._cursor;
+      if (i < 0)
+        i = 0 - i;
+      minusres.push_back(i);
+    }
+    int min = minusres[0];
+    int pos = 0;
+    for (int i = 1; i < minusres.size(); ++i) {
+      if (min > minusres[i]) {
+        min = minusres[i];
+        pos = i;
+      }
+    }
+    _musicInfo._resultpos = _musicInfo.find_result[pos].first;
+    _musicInfo._cursor = _musicInfo._resultpos;
+    _callback(_musicInfo._cursor);
+  }
+  _musicInfo._find = false;
+  curs_set(0);
 }

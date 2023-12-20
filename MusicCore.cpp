@@ -24,6 +24,8 @@ void MusicCore::load(const char *name) {
   else if (musictype == "flac")
     _music =
         BASS_FLAC_StreamCreateFile(FALSE, _name, 0, 0, BASS_STREAM_AUTOFREE);
+  else if (musictype == "OGG" || musictype == "ogg")
+    _music = BASS_StreamCreateFile(FALSE, _name, 0, 0, BASS_SAMPLE_MONO);
   else {
     fprintf(stderr, "unsupport this music type!\n");
     exit(EXIT_FAILURE);
