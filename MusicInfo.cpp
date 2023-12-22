@@ -98,7 +98,7 @@ std::pair<size_t, size_t> myfind(const std::string &music,
                                  const std::string &musicname, size_t pos);
 
 void MusicPlayer::MusicInfo::directory() {
-  _dirwin = newwin(_row / 10 * 9, _col / 2, _row / 10, _col / 4);
+  _dirwin = subwin(stdscr, _row / 10 * 9, _col / 2, _row / 10, _col / 4);
   start_color();
 
   unsigned highth = _row / 10 * 9 - 2;
@@ -205,12 +205,6 @@ void MusicPlayer::MusicInfo::directory() {
               break;
             result.push_back(res.second);
             pos += _musicname.size();
-
-            // if ((pos = music.find(_musicname.c_str(), pos)) ==
-            //     std::string::npos)
-            //   break;
-            // result.push_back(pos);
-            // pos += _musicname.size();
           }
           if (!result.empty()) {
             find_result.push_back({index, result});
@@ -245,15 +239,6 @@ void MusicPlayer::MusicInfo::directory() {
 
       mvprintw(y, x + 1, "%s", _musicname.c_str());
       move(y, x + 1 + _musicname.length());
-      // mvprintw(y + 1, x + 1, "%ld", find_result.size());
-      //
-      // for (size_t i = 0; i < find_result.size(); ++i) {
-      //   mvprintw(y + 1 + i, 0, "%3d", find_result[i].first);
-      //   for (size_t j = 0, z = 0; j < find_result[i].second.size();
-      //        ++j, z += 2) {
-      //     mvprintw(y + 1 + i, 3 + z, " %d", find_result[i].second[j]);
-      //   }
-      // }
     }
 
     wrefresh(_dirwin);
@@ -261,10 +246,6 @@ void MusicPlayer::MusicInfo::directory() {
 
     lock1.release();
   }
-
-  find_result.clear();
-  _musicname.clear();
-  _resultpos = -1;
 
   wborder(_dirwin, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
   wrefresh(_dirwin);
